@@ -1,126 +1,128 @@
-# Braincol - Brainsure Cuidadores
+# Brainsure Cuidadores - Frontend Mobile
 
-Aplicación móvil para la gestión de cuidadores desarrollada con React Native y Expo.
+App móvil desarrollada con React Native y Expo para el apoyo de cuidadores de personas con deterioro cognitivo.
 
-## Estructura del Proyecto
+## Instalación
 
-```
-Braincol/
-├── Backend/
-│   └── Vacío por el momento
-├── Frontend/
-│   ├── app/
-│   │   ├── _layout.tsx          # Configuración del layout y fuentes
-│   │   └── index.tsx             # Pantalla de login
-│   ├── assets/
-│   │   └── fonts/                # Fuentes Poppins
-│   ├── components/               # Componentes reutilizables
-│   ├── constants/
-│   │   └── Colors.ts             # Paleta de colores
-│   ├── app.json                  # Configuración de Expo
-│   ├── package.json              # Dependencias del proyecto
-│   └── README.md                 # Documentación del frontend
-└── README.md                     # Este archivo
-```
-
-## Requisitos Previos
-
-- Node.js (versión 14 o superior)
-- npm o yarn
-- Expo CLI (se instala automáticamente)
-
-## Instalación y Ejecución del Frontend
-
-### 1. Navegar al directorio del Frontend
-
+1. **Navegar a la carpeta del proyecto:**
 ```powershell
-cd Frontend
+cd c:\Users\User\Desktop\BrainCol\Braincol\Frontend
 ```
 
-### 2. Instalar dependencias
-
+2. **Instalar dependencias:**
 ```powershell
 npm install
 ```
 
-### 3. Iniciar el proyecto
-
-Para iniciar el servidor de desarrollo de Expo:
-
+3. **Iniciar la app:**
 ```powershell
 npm start
 ```
 
-Esto abrirá Expo Dev Tools en tu navegador donde podrás:
-- Escanear el código QR con la app Expo Go en tu dispositivo móvil
-- Ejecutar en un emulador/simulador
-- Ver en el navegador web
+## Estructura del proyecto
 
-### 4. Ejecutar en plataformas específicas
-
-#### Web (Navegador)
-```powershell
-npm run web
+```
+Frontend/
+├── app/                    # Pantallas de la app
+│   ├── _layout.tsx        # Layout principal y configuración de fuentes
+│   ├── index.tsx          # Splash Screen (pantalla de carga)
+│   ├── onboarding.tsx     # Pantallas de introducción (3 slides)
+│   ├── login.tsx          # Pantalla de login
+│   ├── register.tsx       # Pantalla de registro
+│   └── verify.tsx         # Pantalla de verificación de código
+├── assets/                # Recursos estáticos
+│   ├── fonts/            # Fuentes Poppins
+│   └── img/              # Imágenes y logos
+├── components/           # Componentes reutilizables
+├── constants/           # Constantes (colores, etc)
+│   └── Colors.ts
+├── app.json            # Configuración de Expo
+└── package.json
 ```
 
-#### Android (Emulador o dispositivo)
-```powershell
-npm run android
-```
+## Características
 
-#### iOS (Simulador o dispositivo - solo en macOS)
-```powershell
-npm run ios
-```
+### Autenticación
+- **Splash Screen**: Pantalla de carga con logo animado (respiración) y spinner después de 3s
+- **Onboarding**: 3 slides introductorios con deslizamiento suave
+- **Login**: Pantalla de inicio de sesión con integración social (Facebook, Google)
+- **Registro**: Formulario completo con validación visual
+- **Verificación**: Código de 6 dígitos con auto-focus
 
-## Tecnologías Utilizadas
+### Diseño
+- Tipografía Poppins en todos los textos
+- Paleta de colores personalizada y consistente
+- Diseño completamente responsive (iPhone SE a iPhone 14 Pro Max)
+- Animaciones suaves en transiciones
+- Iconos profesionales de Ionicons
+- Componentes con estados visuales claros
 
-### Frontend
-- React Native 0.74.5
-- Expo 51.0.28
-- Expo Router (Navegación)
-- TypeScript
-- Expo Font (Tipografía Poppins)
+### Navegación
+- Expo Router para navegación fluida
+- Transiciones animadas entre pantallas
+- Stack navigation configurado
 
-## Características Implementadas
+## Flujo de la App
 
-### Pantalla de Login
-- Autenticación con correo y contraseña
-- Recuperación de contraseña
-- Inicio de sesión con Facebook
-- Inicio de sesión con Google
-- Registro de nuevos usuarios
-- Diseño responsive
-- Paleta de colores personalizada
+1. **Splash Screen** (5 segundos)
+   - Logo con animación de respiración
+   - Spinner opcional si tarda más de 3s
+   - Fade out al terminar
+
+2. **Onboarding** (3 slides)
+   - Slide 1: Tu bienestar es nuestra prioridad
+   - Slide 2: Monitorea el progreso cognitivo
+   - Slide 3: Conéctate con otros cuidadores
+   - Deslizamiento manual o con botones
+   - Fade out al completar
+
+3. **Login**
+   - Email y contraseña
+   - Login social (Facebook, Google)
+   - Recuperar contraseña
+   - Ir a registro
+
+4. **Registro**
+   - Nombre completo
+   - Email
+   - Contraseña con visibilidad toggle
+   - Confirmar contraseña
+   - Términos y condiciones
+
+5. **Verificación**
+   - Código de 6 dígitos
+   - Auto-focus entre campos
+   - Reenviar código
+
+## Tecnologías
+
+- **React Native** - Framework móvil
+- **Expo** - Plataforma de desarrollo
+- **Expo Router** - Navegación basada en archivos
+- **TypeScript** - Tipado estático
+- **Expo Font** - Gestión de fuentes
+- **React Native Animated** - Animaciones nativas
+- **Ionicons** - Iconografía
 
 ## Paleta de Colores
 
-- Blanco Nube: #F7F9FA
-- Azul Suave: #B3D4FF
-- Lila Suave: #A6A8F0
-- Gris Perla: #707B8C
-- Azul Neuro: #5C6BC0
-
-## Comandos Útiles
-
-```powershell
-# Instalar una nueva dependencia
-npm install <nombre-paquete>
-
-# Limpiar caché de Expo
-npx expo start -c
-
-# Ver versión de Expo
-npx expo --version
-
-# Actualizar dependencias
-npm update
+```typescript
+Colors = {
+  primary: '#5B68DF',      // Azul principal
+  background: '#F5F6FA',   // Gris claro de fondo
+  white: '#FFFFFF',
+  border: '#E5E7EB',
+  text: {
+    primary: '#1F2937',
+    secondary: '#6B7280',
+    placeholder: '#9CA3AF',
+  }
+}
 ```
 
 ## Notas de Desarrollo
 
-- Las fuentes Poppins están incluidas en `assets/fonts/`
-- La configuración de navegación usa Expo Router
-- Los colores están centralizados en `constants/Colors.ts`
-- El proyecto usa TypeScript para type safety
-
+- Las animaciones están optimizadas para funcionar en web y móvil
+- El diseño usa porcentajes para adaptarse a cualquier tamaño de pantalla
+- Las fuentes se cargan de manera asíncrona en el `_layout.tsx`
+- Los componentes usan `useWindowDimensions` para responsive design en tiempo real
