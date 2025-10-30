@@ -6,7 +6,6 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
-  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
@@ -49,17 +48,10 @@ export default function SplashScreen() {
       setShowSpinner(true);
     }, 3000);
 
-    // Simular carga y navegar al onboarding después de 4-5 segundos con fade out
+    // Simular carga y navegar al login después de 4-5 segundos
     const navigationTimer = setTimeout(() => {
-      // Fade out antes de navegar
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        router.replace('/onboarding');
-      });
-    }, 4500);
+      router.replace('/index');
+    }, 5000);
 
     return () => {
       breatheAnimation.stop();
@@ -70,7 +62,7 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       
       <Animated.View
         style={[
@@ -81,12 +73,10 @@ export default function SplashScreen() {
           },
         ]}
       >
-        {/* Logo imagen */}
-        <Image
-          source={require('../assets/img/logo4kbrainsure.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        {/* Logo circular con icono */}
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoText}>B</Text>
+        </View>
         
         {/* Nombre de la marca */}
         <Text style={styles.brandName}>Brainsure</Text>
@@ -96,7 +86,7 @@ export default function SplashScreen() {
       {/* Spinner que aparece después de 3 segundos */}
       {showSpinner && (
         <View style={styles.spinnerContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={Colors.white} />
           <Text style={styles.loadingText}>Cargando...</Text>
         </View>
       )}
@@ -107,7 +97,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -115,22 +105,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
-    width: 250,
-    height: 250,
-    marginBottom: 32,
+  logoCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  logoText: {
+    fontSize: 64,
+    fontFamily: 'Poppins-Bold',
+    color: Colors.primary,
+    letterSpacing: -2,
   },
   brandName: {
     fontSize: 32,
     fontFamily: 'Poppins-Bold',
-    color: Colors.text.primary,
+    color: Colors.white,
     letterSpacing: -0.5,
     marginBottom: 4,
   },
   brandSubtitle: {
     fontSize: 18,
     fontFamily: 'Poppins-Regular',
-    color: Colors.text.secondary,
+    color: Colors.white,
+    opacity: 0.9,
     letterSpacing: 2,
   },
   spinnerContainer: {
@@ -142,6 +151,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
-    color: Colors.text.secondary,
+    color: Colors.white,
+    opacity: 0.8,
   },
 });
