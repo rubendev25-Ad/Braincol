@@ -19,23 +19,6 @@ npm install
 npm start
 ```
 
-## Ejecutar en dispositivo
-
-### Android:
-```powershell
-npm run android
-```
-
-### iOS:
-```powershell
-npm run ios
-```
-
-### Web:
-```powershell
-npm run web
-```
-
 ## Estructura del proyecto
 
 ```
