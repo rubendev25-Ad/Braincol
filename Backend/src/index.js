@@ -3,8 +3,14 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 require('dotenv').config();
 
+const connectDB = require('./config/database');
+const authRoutes = require('./routes/authRoutes');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Conectar a la base de datos
+connectDB();
 
 // Middleware
 app.use(cors());
@@ -16,42 +22,46 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'Brainsure Cuidadores API',
     version: '1.0.0',
-    status: 'running'
+    status: 'running',
+    endpoints: {
+      auth: '/api/auth',
+      docs: '/api/docs'
+    }
   });
 });
 
 // Rutas de autenticación
-app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  // TODO: Implementar lógica de autenticación
-  res.json({ 
-    message: 'Login endpoint',
-    email: email
+app.use('/api/auth', authRoutes);
+
+// Manejo de errores 404
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Ruta no encontrada'
   });
 });
 
-app.post('/api/auth/register', (req, res) => {
-  const { email, password, name } = req.body;
-  
-  // TODO: Implementar lógica de registro
-  res.json({ 
-    message: 'Register endpoint',
-    email: email
-  });
-});
-
-app.post('/api/auth/forgot-password', (req, res) => {
-  const { email } = req.body;
-  
-  // TODO: Implementar lógica de recuperación de contraseña
-  res.json({ 
-    message: 'Forgot password endpoint',
-    email: email
+// Manejo global de errores
+app.use((err, req, res, next) => {
+  console.error('Error:', err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`
+    ========================================
+    🚀 Servidor Brainsure Cuidadores
+    ========================================
+    🌐 URL: http://localhost:${PORT}
+    📊 Entorno: ${process.env.NODE_ENV || 'development'}
+    ⏰ Iniciado: ${new Date().toLocaleString()}
+    ========================================
+  `);
 });
+
+module.exports = app;

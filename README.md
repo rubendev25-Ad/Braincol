@@ -8,7 +8,20 @@ Aplicación completa para la gestión de cuidadores de personas con deterioro co
 Braincol/
 ├── Backend/
 │   ├── src/
-│   │   └── index.js              # API REST con Express
+│   │   ├── config/
+│   │   │   └── database.js       # Conexión MongoDB
+│   │   ├── controllers/
+│   │   │   └── authController.js # Lógica de autenticación
+│   │   ├── middleware/
+│   │   │   └── auth.js           # Middleware JWT
+│   │   ├── models/
+│   │   │   └── User.js           # Modelo de Usuario
+│   │   ├── routes/
+│   │   │   └── authRoutes.js     # Rutas de autenticación
+│   │   ├── utils/
+│   │   │   ├── emailService.js   # Servicio de emails
+│   │   │   └── validators.js     # Validadores
+│   │   └── index.js              # Servidor principal
 │   ├── .env                      # Variables de entorno (no subir a git)
 │   ├── .env.example              # Plantilla de variables de entorno
 │   ├── .gitignore
@@ -111,6 +124,8 @@ npm run ios       # Abrir en iOS (solo macOS)
 ### Backend
 - **Node.js** - Runtime de JavaScript
 - **Express.js 4.18.2** - Framework web minimalista
+- **MongoDB 8.0.0** - Base de datos NoSQL
+- **Mongoose 8.0.0** - ODM para MongoDB
 - **CORS 2.8.5** - Middleware para peticiones cross-origin
 - **dotenv 16.3.1** - Manejo de variables de entorno
 - **body-parser 1.20.2** - Parseo de peticiones HTTP
@@ -136,24 +151,56 @@ GET /
 ```
 Retorna estado de la API y versión.
 
-### Autenticación
+### Autenticación (Públicos)
+```
+POST /api/auth/register
+Body: { fullName: string, email: string, password: string, confirmPassword: string }
+Response: { success: boolean, message: string, data: { user, token, needsVerification } }
+```
+Registra un nuevo usuario y envía código de verificación.
+
 ```
 POST /api/auth/login
 Body: { email: string, password: string }
+Response: { success: boolean, message: string, data: { user, token } }
 ```
-Inicia sesión con email y contraseña.
+Inicia sesión con email y contraseña. Requiere verificación de cuenta.
 
 ```
-POST /api/auth/register
-Body: { email: string, password: string, name: string }
+POST /api/auth/verify
+Body: { email: string, code: string }
+Response: { success: boolean, message: string, data: { user, token } }
 ```
-Registra un nuevo usuario.
+Verifica la cuenta con código de 6 dígitos enviado por email.
+
+```
+POST /api/auth/resend-code
+Body: { email: string }
+Response: { success: boolean, message: string }
+```
+Reenvía código de verificación al email.
 
 ```
 POST /api/auth/forgot-password
 Body: { email: string }
+Response: { success: boolean, message: string }
 ```
-Solicita recuperación de contraseña.
+Solicita código de recuperación de contraseña (válido 30 min).
+
+```
+POST /api/auth/reset-password
+Body: { email: string, code: string, newPassword: string, confirmPassword: string }
+Response: { success: boolean, message: string }
+```
+Resetea la contraseña usando el código de recuperación.
+
+### Autenticación (Protegidos)
+```
+GET /api/auth/profile
+Headers: { Authorization: "Bearer <token>" }
+Response: { success: boolean, data: { user } }
+```
+Obtiene el perfil del usuario autenticado.
 
 ## Pantallas Frontend
 
@@ -224,16 +271,18 @@ export const Colors = {
 PORT=3000
 NODE_ENV=development
 
+# MongoDB
+MONGODB_URI=mongodb://localhost:27017/brainsure
+
 # JWT
-JWT_SECRET=tu_clave_secreta_super_segura_cambiala
+JWT_SECRET=brainsure_secret_key_change_in_production_2024
 JWT_EXPIRES_IN=7d
 
-# Base de datos (por configurar)
-# DB_HOST=localhost
-# DB_PORT=5432
-# DB_NAME=braincol
-# DB_USER=postgres
-# DB_PASSWORD=
+# Email (opcional - para envío real de emails)
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USER=tu_email@gmail.com
+# SMTP_PASS=tu_contraseña_de_app
 ```
 
 ## Comandos Útiles
@@ -268,12 +317,23 @@ Splash (5s) → Onboarding (3 slides) → Login
 ## Características Implementadas
 
 ### Backend
-- API REST funcional con Express
-- Estructura de endpoints de autenticación
-- Middleware de CORS configurado
-- Variables de entorno con dotenv
-- Scripts de desarrollo y producción
-- Preparado para JWT y bcrypt
+- ✅ API REST completa con Express
+- ✅ MongoDB integrado con Mongoose
+- ✅ Arquitectura MVC (Model-View-Controller)
+- ✅ Sistema de autenticación JWT completo
+- ✅ Registro de usuarios con verificación por email
+- ✅ Login con validación de credenciales
+- ✅ Verificación de cuenta con código de 6 dígitos
+- ✅ Recuperación de contraseña con código temporal
+- ✅ Encriptación de contraseñas con bcrypt
+- ✅ Middleware de autenticación para rutas protegidas
+- ✅ Validación de datos (email, password, nombre)
+- ✅ Manejo centralizado de errores
+- ✅ Modelo de Usuario con métodos helper
+- ✅ Servicio de emails (simulado - listo para integración real)
+- ✅ Variables de entorno con dotenv
+- ✅ Scripts de desarrollo y producción
+- ✅ CORS configurado
 
 ### Frontend
 - Sistema de navegación con Expo Router
@@ -290,15 +350,18 @@ Splash (5s) → Onboarding (3 slides) → Login
 ## Próximas Implementaciones
 
 ### Backend
-- Conexión a base de datos (PostgreSQL/MongoDB)
-- Modelos y esquemas de datos
-- Controladores separados por módulo
-- Middleware de autenticación JWT activo
-- Validación de datos con express-validator
-- Manejo centralizado de errores
-- Logger (Winston/Morgan)
-- Rate limiting
-- Rutas de usuarios, perfiles, notificaciones
+- Integración real de servicio de emails (Nodemailer/SendGrid)
+- Modelo de Paciente/Persona a cargo
+- Modelo de Actividades cognitivas
+- Modelo de Notificaciones
+- Sistema de roles y permisos avanzados
+- Upload de imágenes de perfil (Multer/Cloudinary)
+- Logger de actividades (Winston/Morgan)
+- Rate limiting para prevenir ataques
+- Pruebas unitarias (Jest)
+- Documentación con Swagger
+- Refresh tokens
+- Webhooks
 
 ### Frontend
 - Dashboard principal
