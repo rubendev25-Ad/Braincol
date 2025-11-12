@@ -9,11 +9,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'http://localhost:3000'; // Cambiar a tu IP cuando pruebes en dispositivo
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
@@ -22,11 +27,79 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = () => {
-    console.log('Register:', { fullName, email, password, confirmPassword });
-    // Validaciones y lógica de registro
-    router.push('/verify');
+  const handleRegister = async () => {
+    // Validaciones
+    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    if (fullName.trim().length < 3) {
+      Alert.alert('Error', 'El nombre debe tener al menos 3 caracteres');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Error', 'Por favor ingresa un email válido');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          confirmPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al registrar usuario');
+      }
+
+      // Guardar el token temporalmente (aún no verificado)
+      await AsyncStorage.setItem('tempToken', data.data.token);
+      await AsyncStorage.setItem('userEmail', email.trim().toLowerCase());
+
+      // Redirigir directamente a la pantalla de verificación
+      router.push({
+        pathname: '/verify',
+        params: { email: email.trim().toLowerCase() },
+      });
+
+      // Mostrar mensaje después de navegar
+      setTimeout(() => {
+        Alert.alert(
+          '¡Registro Exitoso! 🎉',
+          'Te hemos enviado un código de verificación a tu correo electrónico.'
+        );
+      }, 500);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo completar el registro');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogin = () => {
@@ -70,6 +143,7 @@ export default function RegisterScreen() {
                   onChangeText={setFullName}
                   autoCapitalize="words"
                   autoComplete="name"
+                  editable={!isLoading}
                 />
               </View>
 
@@ -91,6 +165,7 @@ export default function RegisterScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
+                  editable={!isLoading}
                 />
               </View>
               <Text style={styles.helperText}>
@@ -115,10 +190,12 @@ export default function RegisterScreen() {
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
+                  editable={!isLoading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
+                  disabled={isLoading}
                 >
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
@@ -146,10 +223,12 @@ export default function RegisterScreen() {
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
+                  editable={!isLoading}
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeIcon}
+                  disabled={isLoading}
                 >
                   <Ionicons
                     name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
@@ -170,17 +249,22 @@ export default function RegisterScreen() {
 
               {/* Botón de Registro */}
               <TouchableOpacity
-                style={styles.registerButton}
+                style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
+                disabled={isLoading}
               >
-                <Text style={styles.registerButtonText}>Registrarse</Text>
+                {isLoading ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.registerButtonText}>Registrarse</Text>
+                )}
               </TouchableOpacity>
             </View>
 
             {/* Login Link */}
             <View style={styles.loginSection}>
               <Text style={styles.loginText}>¿Ya tienes una cuenta? </Text>
-              <TouchableOpacity onPress={handleLogin}>
+              <TouchableOpacity onPress={handleLogin} disabled={isLoading}>
                 <Text style={styles.loginLink}>Inicia sesión</Text>
               </TouchableOpacity>
             </View>
@@ -294,6 +378,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  registerButtonDisabled: {
+    opacity: 0.6,
   },
   registerButtonText: {
     color: Colors.white,

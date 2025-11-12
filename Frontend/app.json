@@ -26,7 +26,6 @@
       "package": "com.braincol.mobile"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
     }
   }
 }

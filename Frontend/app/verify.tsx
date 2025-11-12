@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,34 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'http://localhost:3000'; // Cambiar a tu IP cuando pruebes en dispositivo
 
 export default function VerifyScreen() {
+  const params = useLocalSearchParams();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<(TextInput | null)[]>([]);
-  const [email] = useState('usuario@email.com'); // Este vendría de la navegación
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
+  useEffect(() => {
+    loadEmail();
+  }, []);
+
+  const loadEmail = async () => {
+    const emailParam = params.email as string;
+    const storedEmail = await AsyncStorage.getItem('userEmail');
+    setEmail(emailParam || storedEmail || '');
+  };
 
   const handleCodeChange = (text: string, index: number) => {
     // Solo permitir números
@@ -31,6 +49,15 @@ export default function VerifyScreen() {
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
+
+    // Auto-verificar cuando se complete el código
+    if (index === 5 && text) {
+      const fullCode = [...newCode];
+      fullCode[5] = text;
+      if (fullCode.every(digit => digit !== '')) {
+        setTimeout(() => handleVerify(fullCode.join('')), 300);
+      }
+    }
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -40,16 +67,98 @@ export default function VerifyScreen() {
     }
   };
 
-  const handleVerify = () => {
-    const verificationCode = code.join('');
-    console.log('Verify code:', verificationCode);
-    // Lógica de verificación
+  const handleVerify = async (verificationCode?: string) => {
+    const codeToVerify = verificationCode || code.join('');
+    
+    if (codeToVerify.length !== 6) {
+      Alert.alert('Error', 'Por favor ingresa el código completo de 6 dígitos');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          code: codeToVerify,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Código de verificación inválido');
+      }
+
+      // Guardar el token y datos del usuario
+      await AsyncStorage.setItem('authToken', data.data.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
+      await AsyncStorage.removeItem('tempToken');
+      await AsyncStorage.removeItem('userEmail');
+
+      Alert.alert(
+        '¡Verificación Exitosa! ✅',
+        'Tu cuenta ha sido verificada correctamente. ¡Bienvenido a BrainCol!',
+        [
+          {
+            text: 'Continuar',
+            onPress: () => {
+              // Redirigir a la pantalla principal de la app (home/dashboard)
+              router.replace('/(tabs)'); // O la ruta de tu pantalla principal
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo verificar el código');
+      // Limpiar el código si es inválido
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    console.log('Resend code');
-    setCode(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+  const handleResend = async () => {
+    if (!email) {
+      Alert.alert('Error', 'No se pudo obtener tu email');
+      return;
+    }
+
+    setIsResending(true);
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/resend-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'No se pudo reenviar el código');
+      }
+
+      Alert.alert(
+        'Código Reenviado ✅',
+        'Hemos enviado un nuevo código de verificación a tu correo electrónico.',
+      );
+      
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo reenviar el código');
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const isCodeComplete = code.every((digit) => digit !== '');
@@ -96,6 +205,7 @@ export default function VerifyScreen() {
                 maxLength={1}
                 selectTextOnFocus
                 autoFocus={index === 0}
+                editable={!isLoading}
               />
             ))}
           </View>
@@ -104,20 +214,36 @@ export default function VerifyScreen() {
           <TouchableOpacity
             style={[
               styles.verifyButton,
-              !isCodeComplete && styles.verifyButtonDisabled,
+              (!isCodeComplete || isLoading) && styles.verifyButtonDisabled,
             ]}
-            onPress={handleVerify}
-            disabled={!isCodeComplete}
+            onPress={() => handleVerify()}
+            disabled={!isCodeComplete || isLoading}
           >
-            <Text style={styles.verifyButtonText}>Verificar</Text>
+            {isLoading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.verifyButtonText}>Verificar</Text>
+            )}
           </TouchableOpacity>
 
           {/* Resend Link */}
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>¿No recibiste el código? </Text>
-            <TouchableOpacity onPress={handleResend}>
-              <Text style={styles.resendLink}>Reenviar</Text>
+            <TouchableOpacity onPress={handleResend} disabled={isResending || isLoading}>
+              {isResending ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Text style={styles.resendLink}>Reenviar</Text>
+              )}
             </TouchableOpacity>
+          </View>
+
+          {/* Info Box */}
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+            <Text style={styles.infoText}>
+              El código expirará en 15 minutos. Revisa tu bandeja de entrada y spam.
+            </Text>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -241,5 +367,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.primary,
     fontFamily: 'Poppins-SemiBold',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8EEFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 30,
+    gap: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.text.secondary,
+    fontFamily: 'Poppins-Regular',
+    lineHeight: 18,
   },
 });
