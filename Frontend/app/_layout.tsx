@@ -46,6 +46,8 @@ export default function RootLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
       <Stack.Screen name="verify" />
+      <Stack.Screen name="initialAssessment" />
+      <Stack.Screen name="(tabs)" />
     </Stack>
   );
 }

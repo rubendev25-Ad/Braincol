@@ -1,30 +1,54 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Configuración del transporter para Gmail
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
+// Verificar si las credenciales de email están configuradas
+const isEmailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASS;
 
-// Verificar la configuración del transporter
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error en la configuración del email:', error);
-  } else {
-    console.log('✅ Servidor de email listo para enviar mensajes');
-  }
-});
+// Configuración del transporter para Gmail (solo si hay credenciales)
+let transporter = null;
+
+if (isEmailConfigured) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+
+  // Verificar la configuración del transporter
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Error en la configuración del email:', error.message);
+      console.log('⚠️  El registro funcionará pero no se enviarán emails');
+    } else {
+      console.log('✅ Servidor de email listo para enviar mensajes');
+    }
+  });
+} else {
+  console.log('⚠️  Credenciales de email no configuradas');
+  console.log('   El sistema funcionará en modo desarrollo (códigos en consola)');
+  console.log('   Configura EMAIL_USER y EMAIL_PASS en .env para enviar emails reales');
+}
 
 const sendVerificationEmail = async (email, code) => {
   try {
+    // Modo desarrollo: mostrar código en consola
+    if (!isEmailConfigured) {
+      console.log('\n' + '='.repeat(60));
+      console.log('📧 CÓDIGO DE VERIFICACIÓN (Modo Desarrollo)');
+      console.log('='.repeat(60));
+      console.log(`Email: ${email}`);
+      console.log(`Código: ${code}`);
+      console.log(`⏰ Expira en: 15 minutos`);
+      console.log('='.repeat(60) + '\n');
+      return true;
+    }
+
     const mailOptions = {
-      from: `"BrainCol 🧠" <${process.env.EMAIL_USER}>`,
+      from: `"Brainsure Cuidadores 🧠" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🔐 Verifica tu cuenta en BrainCol',
+      subject: '🔐 Verifica tu cuenta en Brainsure Cuidadores',
       html: `
         <!DOCTYPE html>
         <html lang="es">
@@ -236,16 +260,16 @@ const sendVerificationEmail = async (email, code) => {
             <!-- Header -->
             <div class="header">
               <div class="logo">🧠</div>
-              <h1>BrainCol</h1>
+              <h1>Brainsure Cuidadores</h1>
               <p>Cuidado profesional para tus seres queridos</p>
             </div>
 
             <!-- Content -->
             <div class="content">
-              <div class="greeting">¡Bienvenido a BrainCol! 🎉</div>
+              <div class="greeting">¡Bienvenido a Brainsure Cuidadores! 🎉</div>
               
               <p class="message">
-                Estamos emocionados de tenerte con nosotros. Para comenzar a usar todas las funciones de BrainCol y conectar con cuidadores profesionales, necesitamos verificar tu dirección de correo electrónico.
+                Estamos emocionados de tenerte con nosotros. Para comenzar a usar todas las funciones de Brainsure Cuidadores y conectar con cuidadores profesionales, necesitamos verificar tu dirección de correo electrónico.
               </p>
 
               <div class="code-container">
@@ -284,8 +308,8 @@ const sendVerificationEmail = async (email, code) => {
 
             <!-- Footer -->
             <div class="footer">
-              <p class="footer-text"><strong>BrainCol</strong> - Conectando familias con cuidado profesional</p>
-              <p class="footer-text">© ${new Date().getFullYear()} BrainCol. Todos los derechos reservados.</p>
+              <p class="footer-text"><strong>Brainsure Cuidadores</strong> - Conectando familias con cuidado profesional</p>
+              <p class="footer-text">© ${new Date().getFullYear()} Brainsure Cuidadores. Todos los derechos reservados.</p>
               <p class="footer-text" style="margin-top: 15px; font-size: 11px;">
                 Este es un correo automático, por favor no respondas a este mensaje.
               </p>
@@ -307,10 +331,22 @@ const sendVerificationEmail = async (email, code) => {
 
 const sendPasswordResetEmail = async (email, code) => {
   try {
+    // Modo desarrollo: mostrar código en consola
+    if (!isEmailConfigured) {
+      console.log('\n' + '='.repeat(60));
+      console.log('🔑 CÓDIGO DE RECUPERACIÓN (Modo Desarrollo)');
+      console.log('='.repeat(60));
+      console.log(`Email: ${email}`);
+      console.log(`Código: ${code}`);
+      console.log(`⏰ Expira en: 15 minutos`);
+      console.log('='.repeat(60) + '\n');
+      return true;
+    }
+
     const mailOptions = {
-      from: `"BrainCol 🧠" <${process.env.EMAIL_USER}>`,
+      from: `"Brainsure Cuidadores 🧠" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: '🔑 Recupera tu cuenta de BrainCol',
+      subject: '🔑 Recupera tu cuenta de Brainsure Cuidadores',
       html: `
         <!DOCTYPE html>
         <html lang="es">
@@ -460,7 +496,7 @@ const sendPasswordResetEmail = async (email, code) => {
             <div class="header">
               <div class="logo">🔑</div>
               <h1>Recuperación de Cuenta</h1>
-              <p>BrainCol - Restablece tu contraseña</p>
+              <p>Brainsure Cuidadores - Restablece tu contraseña</p>
             </div>
 
             <!-- Content -->
@@ -468,7 +504,7 @@ const sendPasswordResetEmail = async (email, code) => {
               <div class="greeting">Solicitud de recuperación de contraseña</div>
               
               <p class="message">
-                Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en BrainCol. Utiliza el siguiente código para continuar con el proceso:
+                Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en Brainsure Cuidadores. Utiliza el siguiente código para continuar con el proceso:
               </p>
 
               <div class="code-container">
@@ -496,14 +532,14 @@ const sendPasswordResetEmail = async (email, code) => {
               </div>
 
               <p class="message" style="margin-top: 30px; text-align: center; color: #9ca3af; font-size: 14px;">
-                🛡️ En BrainCol, la seguridad de tu cuenta es nuestra prioridad
+                🛡️ En Brainsure Cuidadores, la seguridad de tu cuenta es nuestra prioridad
               </p>
             </div>
 
             <!-- Footer -->
             <div class="footer">
-              <p class="footer-text"><strong>BrainCol</strong> - Conectando familias con cuidado profesional</p>
-              <p class="footer-text">© ${new Date().getFullYear()} BrainCol. Todos los derechos reservados.</p>
+              <p class="footer-text"><strong>Brainsure Cuidadores</strong> - Conectando familias con cuidado profesional</p>
+              <p class="footer-text">© ${new Date().getFullYear()} Brainsure Cuidadores. Todos los derechos reservados.</p>
               <p class="footer-text" style="margin-top: 15px; font-size: 11px;">
                 Este es un correo automático, por favor no respondas a este mensaje.
               </p>

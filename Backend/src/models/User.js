@@ -55,7 +55,7 @@ class User {
   // Generar código de verificación
   async generateVerificationCode() {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutos
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutos
     
     await inMemoryDB.saveVerificationCode(this.email, code, expiresAt);
     return code;

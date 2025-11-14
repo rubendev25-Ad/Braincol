@@ -82,22 +82,15 @@ export default function RegisterScreen() {
       await AsyncStorage.setItem('tempToken', data.data.token);
       await AsyncStorage.setItem('userEmail', email.trim().toLowerCase());
 
+      setIsLoading(false);
+
       // Redirigir directamente a la pantalla de verificación
-      router.push({
+      router.replace({
         pathname: '/verify',
         params: { email: email.trim().toLowerCase() },
       });
-
-      // Mostrar mensaje después de navegar
-      setTimeout(() => {
-        Alert.alert(
-          '¡Registro Exitoso! 🎉',
-          'Te hemos enviado un código de verificación a tu correo electrónico.'
-        );
-      }, 500);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo completar el registro');
-    } finally {
       setIsLoading(false);
     }
   };

@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,8 @@ export default function VerifyScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadEmail();
@@ -101,25 +104,47 @@ export default function VerifyScreen() {
       await AsyncStorage.removeItem('tempToken');
       await AsyncStorage.removeItem('userEmail');
 
-      Alert.alert(
-        '¡Verificación Exitosa! ✅',
-        'Tu cuenta ha sido verificada correctamente. ¡Bienvenido a BrainCol!',
-        [
-          {
-            text: 'Continuar',
-            onPress: () => {
-              // Redirigir a la pantalla principal de la app (home/dashboard)
-              router.replace('/(tabs)'); // O la ruta de tu pantalla principal
-            },
-          },
-        ]
-      );
+      // Pequeña pausa para mostrar éxito visual
+      setIsLoading(false);
+      
+      // Animación de éxito con el input
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Esperar un momento antes de la transición
+      setTimeout(() => {
+        // Animación de salida suave
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 0.9,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          // Redirigir a la evaluación inicial después de la animación
+          router.replace('/initialAssessment');
+        });
+      }, 800);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'No se pudo verificar el código');
       // Limpiar el código si es inválido
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-    } finally {
       setIsLoading(false);
     }
   };
@@ -170,7 +195,13 @@ export default function VerifyScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.content}>
+        <Animated.View style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}>
           {/* Icon */}
           <View style={styles.iconContainer}>
             <View style={styles.iconCircle}>
@@ -245,7 +276,7 @@ export default function VerifyScreen() {
               El código expirará en 15 minutos. Revisa tu bandeja de entrada y spam.
             </Text>
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

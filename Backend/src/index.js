@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
+const assessmentRoutes = require('./routes/assessmentRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ app.get('/', (req, res) => {
     status: 'running',
     endpoints: {
       auth: '/api/auth',
+      assessment: '/api/assessment',
       docs: '/api/docs'
     }
   });
@@ -32,6 +34,9 @@ app.get('/', (req, res) => {
 
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);
+
+// Rutas de evaluación
+app.use('/api/assessment', assessmentRoutes);
 
 // Manejo de errores 404
 app.use((req, res) => {

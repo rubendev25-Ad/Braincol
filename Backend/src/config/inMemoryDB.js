@@ -4,9 +4,11 @@
 const users = new Map(); // Almacén temporal de usuarios
 const verificationCodes = new Map(); // Códigos de verificación temporales
 const resetCodes = new Map(); // Códigos de recuperación temporales
+const initialAssessments = new Map(); // Evaluaciones iniciales
 
 // Simulación de auto-incremento de IDs
 let userIdCounter = 1;
+let assessmentIdCounter = 1;
 
 const inMemoryDB = {
   // Crear usuario
@@ -87,6 +89,38 @@ const inMemoryDB = {
     resetCodes.delete(email.toLowerCase());
   },
 
+  // Guardar evaluación inicial
+  saveInitialAssessment: async (assessmentData) => {
+    const assessmentId = `assessment_${assessmentIdCounter++}`;
+    const assessment = {
+      id: assessmentId,
+      ...assessmentData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    initialAssessments.set(assessmentData.userId, assessment);
+    return assessment;
+  },
+
+  // Obtener evaluación inicial por userId
+  getInitialAssessment: async (userId) => {
+    return initialAssessments.get(userId) || null;
+  },
+
+  // Actualizar evaluación inicial
+  updateInitialAssessment: async (userId, updates) => {
+    const assessment = initialAssessments.get(userId);
+    if (!assessment) return null;
+    
+    const updatedAssessment = {
+      ...assessment,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    initialAssessments.set(userId, updatedAssessment);
+    return updatedAssessment;
+  },
+
   // Utilidad: Listar todos los usuarios (solo para debug)
   getAllUsers: () => {
     return Array.from(users.values());
@@ -97,7 +131,9 @@ const inMemoryDB = {
     users.clear();
     verificationCodes.clear();
     resetCodes.clear();
+    initialAssessments.clear();
     userIdCounter = 1;
+    assessmentIdCounter = 1;
   }
 };
 
