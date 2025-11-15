@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,18 @@ import { Colors } from '../constants/Colors';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://localhost:3000';
+// Detectar plataforma y usar la URL correcta
+const getApiUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000';
+  } else if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  } else {
+    return 'http://192.168.1.100:3000';
+  }
+};
+
+const API_URL = getApiUrl();
 
 interface Question {
   id: string;

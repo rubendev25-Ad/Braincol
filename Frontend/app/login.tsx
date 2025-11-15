@@ -9,18 +9,95 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Detectar plataforma y usar la URL correcta
+const getApiUrl = () => {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000/api';
+  } else if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000/api';
+  } else {
+    // iOS o dispositivo físico - usar IP local de tu computadora
+    return 'http://192.168.1.100:3000/api'; // Cambiar por tu IP local
+  }
+};
+
+const API_URL = getApiUrl();
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    console.log('Login:', { email, password });
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Si el usuario no está verificado
+        if (data.needsVerification) {
+          Alert.alert(
+            'Verificación requerida',
+            data.message || 'Por favor verifica tu cuenta',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  router.push({
+                    pathname: '/verify',
+                    params: { email: email.trim().toLowerCase() }
+                  });
+                }
+              }
+            ]
+          );
+          setLoading(false);
+          return;
+        }
+
+        Alert.alert('Error', data.message || 'Credenciales incorrectas');
+        setLoading(false);
+        return;
+      }
+
+      // Guardar token y datos del usuario
+      await AsyncStorage.setItem('authToken', data.data.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
+
+      // Navegar al dashboard
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error en login:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFacebookLogin = () => {
@@ -90,8 +167,16 @@ export default function LoginScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                <Text style={styles.loginButtonText}>Iniciar sesión</Text>
+              <TouchableOpacity 
+                style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color={Colors.white} />
+                ) : (
+                  <Text style={styles.loginButtonText}>Iniciar sesión</Text>
+                )}
               </TouchableOpacity>
             </View>
 
@@ -210,6 +295,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
   loginButtonText: {
     color: Colors.white,
