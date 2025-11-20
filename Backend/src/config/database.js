@@ -1,21 +1,34 @@
-// Conexión a base de datos
-// Por ahora usamos almacenamiento en memoria
-// Cuando tengas credenciales de Supabase, se integrará aquí
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
+
+// Cliente de Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Error: SUPABASE_URL y SUPABASE_KEY deben estar configurados en .env');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const connectDB = async () => {
-  console.log(`
-    ========================================
-    💾 BASE DE DATOS
-    ========================================
-    Modo: Almacenamiento en memoria (temporal)
+  try {
+    console.log('🔄 Conectando a Supabase...');
+    console.log('📊 URL:', supabaseUrl);
     
-    ⚠️  Los datos se perderán al reiniciar el servidor
+    // Verificar que el cliente de Supabase esté inicializado
+    if (!supabase) {
+      throw new Error('Cliente de Supabase no inicializado');
+    }
     
-    ✅ Cuando tengas credenciales de Supabase:
-       - Actualiza SUPABASE_URL y SUPABASE_KEY en .env
-       - Los datos se persistirán en la nube
-    ========================================
-  `);
+    console.log('✅ Supabase conectado exitosamente');
+    console.log('� Cliente de Supabase listo para usar');
+  } catch (error) {
+    console.error('❌ Error al conectar con Supabase:', error.message);
+    console.log('⚠️  Revisa tu configuración en .env');
+  }
 };
 
 module.exports = connectDB;
+module.exports.supabase = supabase;

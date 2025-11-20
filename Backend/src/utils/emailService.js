@@ -559,7 +559,152 @@ const sendPasswordResetEmail = async (email, code) => {
   }
 };
 
+const sendWelcomeEmail = async (email, name) => {
+  console.log('📨 sendWelcomeEmail llamado con:', { email, name });
+  console.log('🔧 Configuración SMTP:', {
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT,
+    user: process.env.SMTP_USER ? 'configurado' : 'NO configurado'
+  });
+
+  try {
+    // Modo desarrollo: mostrar mensaje en consola
+    if (!isEmailConfigured) {
+      console.log('\n' + '='.repeat(60));
+      console.log('🎉 MENSAJE DE BIENVENIDA (Modo Desarrollo)');
+      console.log('='.repeat(60));
+      console.log(`Email: ${email}`);
+      console.log('='.repeat(60) + '\n');
+      return true;
+    }
+
+    const mailOptions = {
+      from: `"Brainsure Cuidadores 🧠" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '¡Bienvenido a Brainsure Cuidadores!',
+      html: `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6; 
+              color: #333;
+              background: #f5f7fa;
+              padding: 20px;
+            }
+            .email-wrapper {
+              max-width: 600px;
+              margin: 0 auto;
+              background: white;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+              padding: 40px 30px;
+              text-align: center;
+              position: relative;
+            }
+            .logo {
+              font-size: 60px;
+              margin-bottom: 10px;
+            }
+            .header h1 {
+              color: white;
+              font-size: 28px;
+              font-weight: 700;
+              margin: 0;
+            }
+            .header p {
+              color: rgba(255, 255, 255, 0.95);
+              font-size: 16px;
+              margin-top: 8px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .greeting {
+              font-size: 24px;
+              font-weight: 600;
+              color: #1f2937;
+              margin-bottom: 20px;
+            }
+            .message {
+              color: #6b7280;
+              font-size: 16px;
+              margin-bottom: 30px;
+              line-height: 1.6;
+            }
+            .footer {
+              background: #f9fafb;
+              padding: 30px;
+              text-align: center;
+              border-top: 1px solid #e5e7eb;
+            }
+            .footer-text {
+              color: #9ca3af;
+              font-size: 13px;
+              margin: 5px 0;
+            }
+            @media only screen and (max-width: 600px) {
+              .content { padding: 25px 20px; }
+              .greeting { font-size: 20px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-wrapper">
+            <!-- Header -->
+            <div class="header">
+              <div class="logo">🎉</div>
+              <h1>¡Bienvenido a Brainsure Cuidadores!</h1>
+              <p>Estamos felices de tenerte con nosotros</p>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+              <div class="greeting">Hola ${name},</div>
+              
+              <p class="message">
+                Gracias por unirte a Brainsure Cuidadores. Ahora puedes disfrutar de todas nuestras funciones y conectar con cuidadores profesionales para tus seres queridos.
+              </p>
+
+              <p class="message">
+                Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos. Estamos aquí para ayudarte.
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <p class="footer-text"><strong>Brainsure Cuidadores</strong> - Conectando familias con cuidado profesional</p>
+              <p class="footer-text">© ${new Date().getFullYear()} Brainsure Cuidadores. Todos los derechos reservados.</p>
+              <p class="footer-text" style="margin-top: 15px; font-size: 11px;">
+                Este es un correo automático, por favor no respondas a este mensaje.
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email de bienvenida enviado:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('❌ Error al enviar email de bienvenida:', error);
+    throw new Error('No se pudo enviar el email de bienvenida');
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendWelcomeEmail
 };
