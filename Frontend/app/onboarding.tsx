@@ -17,6 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OnboardingSlide {
   id: string;
@@ -81,7 +82,7 @@ export default function OnboardingScreen() {
     setCurrentIndex(index);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Animación del botón
     Animated.sequence([
       Animated.timing(buttonScale, {
@@ -105,6 +106,9 @@ export default function OnboardingScreen() {
         animated: true,
       });
     } else {
+      // Marcar onboarding como completado
+      await AsyncStorage.setItem('onboardingComplete', 'true');
+      
       // Transición suave al login
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -116,7 +120,9 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
+    // Marcar onboarding como completado
+    await AsyncStorage.setItem('onboardingComplete', 'true');
     router.replace('/login');
   };
 

@@ -16,13 +16,49 @@ const generateToken = (userId) => {
 // Registro
 const register = async (req, res) => {
   try {
-    const { nombre, apellido, correo, telefono, fecha_nacimiento, genero, contraseña, rol } = req.body;
+    // Soporte para ambos formatos: fullName (frontend) o nombre/apellido (directo)
+    let { nombre, apellido, fullName, correo, email, telefono, fecha_nacimiento, genero, contraseña, password, confirmPassword, rol } = req.body;
+
+    // Normalizar campos (soportar ambos formatos)
+    correo = correo || email;
+    contraseña = contraseña || password;
+
+    // Si viene fullName, separarlo en nombre y apellido
+    if (fullName && !nombre) {
+      const nameParts = fullName.trim().split(' ');
+      nombre = nameParts[0];
+      apellido = nameParts.slice(1).join(' ') || '';
+    }
 
     // Validaciones básicas
     if (!nombre || !correo || !contraseña) {
       return res.status(400).json({
         success: false,
         message: 'Nombre, correo y contraseña son obligatorios'
+      });
+    }
+
+    // Validar formato de email
+    if (!validateEmail(correo)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El formato del correo electrónico no es válido. Ejemplo: usuario@ejemplo.com'
+      });
+    }
+
+    // Validar contraseña
+    if (!validatePassword(contraseña)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña debe tener al menos 6 caracteres para mayor seguridad.'
+      });
+    }
+
+    // Validar que las contraseñas coincidan (si viene confirmPassword)
+    if (confirmPassword && contraseña !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Las contraseñas no coinciden. Por favor verifica que ambas sean iguales.'
       });
     }
 
@@ -36,7 +72,7 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'El correo ya está registrado'
+        message: 'Este correo electrónico ya está registrado. Por favor inicia sesión o usa otro correo.'
       });
     }
 
@@ -71,9 +107,9 @@ const register = async (req, res) => {
           fecha_nacimiento,
           genero,
           contraseña: hashedPassword,
-          rol: rol || 'familia',
+          rol: rol || 'cuidador', // Valor por defecto: 'cuidador' (opciones válidas: cuidador, admin, paciente)
           activo: false,
-          ID_de_autenticación: verificationCode,
+          id_de_autenticación: verificationCode,
           codigo_expira: codeExpiry.toISOString()
         }
       ])
@@ -100,14 +136,21 @@ const register = async (req, res) => {
     await sendWelcomeEmail(correo, nombre);
     console.log('✅ Correo enviado exitosamente');
 
+    // Generar token temporal (aunque el usuario aún no está verificado)
+    const token = generateToken(newUser.id);
+
     res.status(201).json({
       success: true,
       message: 'Usuario registrado exitosamente. Por favor verifica tu correo.',
       data: {
-        identificación: newUser.identificación,
-        nombre: newUser.nombre,
-        correo: newUser.correo,
-        rol: newUser.rol
+        token,
+        user: {
+          id: newUser.id,
+          nombre: newUser.nombre,
+          apellido: newUser.apellido,
+          correo: newUser.correo,
+          rol: newUser.rol
+        }
       }
     });
   } catch (error) {
@@ -123,7 +166,12 @@ const register = async (req, res) => {
 // Login
 const login = async (req, res) => {
   try {
-    const { correo, contraseña } = req.body;
+    // Soporte para ambos formatos: email/password (frontend) o correo/contraseña (directo)
+    let { correo, contraseña, email, password } = req.body;
+    
+    // Normalizar campos
+    correo = correo || email;
+    contraseña = contraseña || password;
 
     if (!correo || !contraseña) {
       return res.status(400).json({
@@ -142,7 +190,7 @@ const login = async (req, res) => {
     if (error || !user) {
       return res.status(401).json({
         success: false,
-        message: 'Credenciales inválidas'
+        message: 'Correo o contraseña incorrectos. Por favor verifica tus datos.'
       });
     }
 
@@ -151,7 +199,7 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Credenciales inválidas'
+        message: 'Correo o contraseña incorrectos. Por favor verifica tus datos.'
       });
     }
 
@@ -164,7 +212,7 @@ const login = async (req, res) => {
     }
 
     // Generar token
-    const token = generateToken(user.identificación);
+    const token = generateToken(user.id);
 
     res.json({
       success: true,
@@ -172,7 +220,7 @@ const login = async (req, res) => {
       data: {
         token,
         user: {
-          identificación: user.identificación,
+          id: user.id,
           nombre: user.nombre,
           apellido: user.apellido,
           correo: user.correo,
@@ -193,44 +241,75 @@ const login = async (req, res) => {
 // Verificar código
 const verifyCode = async (req, res) => {
   try {
-    const { email, code } = req.body;
+    const { email, code, correo, codigo } = req.body;
 
-    if (!email || !code) {
+    // Normalizar campos (soportar ambos formatos)
+    const userEmail = email || correo;
+    const verificationCode = code || codigo;
+
+    if (!userEmail || !verificationCode) {
       return res.status(400).json({
         success: false,
         message: 'Email y código son requeridos'
       });
     }
 
-    // Buscar usuario
-    const user = await User.findByEmail(email);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'Usuario no encontrado'
-      });
-    }
+    // Buscar usuario con el código de verificación
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('correo', userEmail.toLowerCase())
+      .eq('id_de_autenticación', verificationCode)
+      .single();
 
-    // Verificar código
-    const verification = await User.verifyCode(email, code);
-    if (!verification.valid) {
+    if (error || !user) {
       return res.status(400).json({
         success: false,
-        message: verification.message
+        message: 'Código de verificación inválido'
       });
     }
 
-    // Actualizar usuario como verificado
-    await user.update({ isVerified: true });
+    // Verificar si el código ha expirado
+    if (new Date() > new Date(user.codigo_expira)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El código de verificación ha expirado'
+      });
+    }
 
+    // Activar usuario y limpiar código
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        activo: true,
+        id_de_autenticación: null,
+        codigo_expira: null
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error al verificar cuenta',
+        error: updateError.message
+      });
+    }
+
+    // Generar token
     const token = generateToken(user.id);
 
     res.status(200).json({
       success: true,
       message: 'Cuenta verificada exitosamente',
       data: {
-        user: user.toJSON(),
-        token
+        token,
+        user: {
+          id: user.id,
+          nombre: user.nombre,
+          apellido: user.apellido,
+          correo: user.correo,
+          rol: user.rol
+        }
       }
     });
 
@@ -247,33 +326,60 @@ const verifyCode = async (req, res) => {
 // Reenviar código de verificación
 const resendVerificationCode = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, correo } = req.body;
+    const userEmail = email || correo;
 
-    if (!email) {
+    if (!userEmail) {
       return res.status(400).json({
         success: false,
         message: 'Email es requerido'
       });
     }
 
-    const user = await User.findByEmail(email);
+    // Buscar usuario
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('correo', userEmail.toLowerCase())
+      .single();
     
-    if (!user) {
+    if (error || !user) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
       });
     }
 
-    if (user.isVerified) {
+    if (user.activo) {
       return res.status(400).json({
         success: false,
         message: 'Esta cuenta ya está verificada'
       });
     }
 
-    const verificationCode = await user.generateVerificationCode();
-    await sendVerificationEmail(user.email, verificationCode);
+    // Generar nuevo código de verificación
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const codeExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+
+    // Actualizar código en la base de datos
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        id_de_autenticación: verificationCode,
+        codigo_expira: codeExpiry.toISOString()
+      })
+      .eq('id', user.id);
+
+    if (updateError) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error al generar nuevo código',
+        error: updateError.message
+      });
+    }
+
+    // Enviar email con el nuevo código
+    await sendVerificationEmail(user.correo, verificationCode);
 
     res.status(200).json({
       success: true,
@@ -431,7 +537,7 @@ const verifyEmail = async (req, res) => {
       .from('users')
       .select('*')
       .eq('correo', correo.toLowerCase())
-      .eq('ID_de_autenticación', codigo)
+      .eq('id_de_autenticación', codigo)
       .single();
 
     if (error || !user) {
@@ -454,10 +560,10 @@ const verifyEmail = async (req, res) => {
       .from('users')
       .update({
         activo: true,
-        ID_de_autenticación: null,
+        id_de_autenticación: null,
         codigo_expira: null
       })
-      .eq('identificación', user.identificación);
+      .eq('id', user.id);
 
     if (updateError) {
       return res.status(500).json({
@@ -468,7 +574,7 @@ const verifyEmail = async (req, res) => {
     }
 
     // Generar token
-    const token = generateToken(user.identificación);
+    const token = generateToken(user.id);
 
     res.json({
       success: true,
@@ -476,7 +582,7 @@ const verifyEmail = async (req, res) => {
       data: {
         token,
         user: {
-          identificación: user.identificación,
+          id: user.id,
           nombre: user.nombre,
           correo: user.correo,
           rol: user.rol

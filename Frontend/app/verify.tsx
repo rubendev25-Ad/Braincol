@@ -147,8 +147,8 @@ export default function VerifyScreen() {
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // Redirigir a la evaluación inicial después de la animación
-          router.replace('/initialAssessment');
+          // Redirigir al menú principal después de la animación
+          router.replace('/(tabs)');
         });
       }, 800);
     } catch (error: any) {

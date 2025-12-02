@@ -1,10 +1,13 @@
-const inMemoryDB = require('../config/inMemoryDB');
+const { supabase } = require('../config/database');
 
 // Guardar evaluación inicial del usuario
 const saveInitialAssessment = async (req, res) => {
   try {
     const { answers, completedAt } = req.body;
     const userId = req.user.id; // Viene del middleware de autenticación
+
+    console.log('📝 Guardando evaluación inicial para usuario:', userId);
+    console.log('📊 Respuestas recibidas:', answers);
 
     if (!answers || typeof answers !== 'object') {
       return res.status(400).json({
@@ -13,30 +16,53 @@ const saveInitialAssessment = async (req, res) => {
       });
     }
 
-    // Validar que se respondieron todas las preguntas requeridas
-    const requiredQuestions = ['emotional_wellbeing', 'stress_level', 'support_resources'];
-    const missingQuestions = requiredQuestions.filter(q => !answers[q]);
+    // Intentar guardar en tabla initial_assessments (si existe)
+    const { data: assessment, error: insertError } = await supabase
+      .from('initial_assessments')
+      .upsert({
+        user_id: userId,
+        answers: answers,
+        completed_at: completedAt || new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+      .select()
+      .single();
 
-    if (missingQuestions.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Faltan respuestas requeridas',
-        missingQuestions
+    if (insertError) {
+      console.log('⚠️  Tabla initial_assessments no existe, usando solución alternativa');
+      console.log('   Error:', insertError.message);
+      
+      // Solución alternativa: guardar en un campo de la tabla users
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          // Nota: Necesitarás agregar estas columnas a la tabla users si no existen
+          initial_assessment_answers: answers,
+          initial_assessment_completed_at: completedAt || new Date().toISOString(),
+          actualizado_en: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error('❌ Error al guardar evaluación:', updateError);
+        throw new Error('No se pudo guardar la evaluación. Por favor contacta al administrador.');
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: 'Evaluación inicial guardada exitosamente',
+        data: {
+          assessment: {
+            userId,
+            answers,
+            completedAt: completedAt || new Date().toISOString()
+          }
+        }
       });
     }
 
-    // Guardar la evaluación
-    const assessment = await inMemoryDB.saveInitialAssessment({
-      userId,
-      answers,
-      completedAt: completedAt || new Date().toISOString()
-    });
-
-    // Actualizar el usuario para marcar que completó la evaluación
-    await inMemoryDB.updateUser(userId, {
-      hasCompletedInitialAssessment: true,
-      initialAssessmentDate: new Date().toISOString()
-    });
+    console.log('✅ Evaluación guardada exitosamente');
 
     res.status(201).json({
       success: true,
@@ -60,12 +86,37 @@ const getInitialAssessment = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const assessment = await inMemoryDB.getInitialAssessment(userId);
+    // Intentar obtener de tabla initial_assessments
+    const { data: assessment, error } = await supabase
+      .from('initial_assessments')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
-    if (!assessment) {
-      return res.status(404).json({
-        success: false,
-        message: 'No se encontró evaluación inicial para este usuario'
+    if (error) {
+      // Solución alternativa: obtener de tabla users
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('initial_assessment_answers, initial_assessment_completed_at')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !user?.initial_assessment_answers) {
+        return res.status(404).json({
+          success: false,
+          message: 'No se encontró evaluación inicial para este usuario'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          assessment: {
+            userId,
+            answers: user.initial_assessment_answers,
+            completedAt: user.initial_assessment_completed_at
+          }
+        }
       });
     }
 
@@ -98,15 +149,44 @@ const updateInitialAssessment = async (req, res) => {
       });
     }
 
-    const updatedAssessment = await inMemoryDB.updateInitialAssessment(userId, {
-      answers,
-      updatedAt: new Date().toISOString()
-    });
+    // Intentar actualizar en tabla initial_assessments
+    const { data: updatedAssessment, error } = await supabase
+      .from('initial_assessments')
+      .update({
+        answers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .select()
+      .single();
 
-    if (!updatedAssessment) {
-      return res.status(404).json({
-        success: false,
-        message: 'No se encontró evaluación inicial para actualizar'
+    if (error) {
+      // Solución alternativa: actualizar en tabla users
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          initial_assessment_answers: answers,
+          actualizado_en: new Date().toISOString()
+        })
+        .eq('id', userId);
+
+      if (updateError) {
+        return res.status(404).json({
+          success: false,
+          message: 'No se encontró evaluación inicial para actualizar'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Evaluación actualizada exitosamente',
+        data: {
+          assessment: {
+            userId,
+            answers,
+            updatedAt: new Date().toISOString()
+          }
+        }
       });
     }
 

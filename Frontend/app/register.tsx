@@ -39,33 +39,57 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [fullNameError, setFullNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   const handleRegister = async () => {
-    // Validaciones
-    if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
+    // Limpiar errores previos
+    setFullNameError('');
+    setEmailError('');
+    setPasswordError('');
+    setConfirmPasswordError('');
+
+    let hasError = false;
+
+    // Validar nombre completo
+    if (!fullName.trim()) {
+      setFullNameError('El nombre completo es obligatorio');
+      hasError = true;
+    } else if (fullName.trim().length < 3) {
+      setFullNameError('El nombre debe tener al menos 3 caracteres');
+      hasError = true;
     }
 
-    if (fullName.trim().length < 3) {
-      Alert.alert('Error', 'El nombre debe tener al menos 3 caracteres');
-      return;
+    // Validar email
+    if (!email.trim()) {
+      setEmailError('El correo electrónico es obligatorio');
+      hasError = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Por favor ingresa un correo electrónico válido');
+      hasError = true;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
+    // Validar contraseña
+    if (!password) {
+      setPasswordError('La contraseña es obligatoria');
+      hasError = true;
+    } else if (password.length < 6) {
+      setPasswordError('La contraseña debe tener al menos 6 caracteres');
+      hasError = true;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
+    // Validar confirmación de contraseña
+    if (!confirmPassword) {
+      setConfirmPasswordError('Debes confirmar tu contraseña');
+      hasError = true;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError('Las contraseñas no coinciden');
+      hasError = true;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
-    }
+    if (hasError) return;
 
     setIsLoading(true);
 
@@ -86,7 +110,17 @@ export default function RegisterScreen() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error al registrar usuario');
+        setIsLoading(false);
+        
+        // Si el error es de correo duplicado
+        if (data.message && data.message.toLowerCase().includes('correo')) {
+          setEmailError(data.message);
+        } else if (data.message && data.message.toLowerCase().includes('contraseñ')) {
+          setPasswordError(data.message);
+        } else {
+          setEmailError(data.message || 'Error al registrar usuario');
+        }
+        return;
       }
 
       // Guardar el token temporalmente (aún no verificado)
@@ -101,8 +135,8 @@ export default function RegisterScreen() {
         params: { email: email.trim().toLowerCase() },
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'No se pudo completar el registro');
       setIsLoading(false);
+      setEmailError('No se pudo conectar con el servidor');
     }
   };
 
@@ -132,7 +166,7 @@ export default function RegisterScreen() {
             <View style={styles.form}>
               {/* Nombre Completo */}
               <Text style={styles.label}>Nombre Completo</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, fullNameError && styles.inputContainerError]}>
                 <Ionicons
                   name="person-outline"
                   size={20}
@@ -144,16 +178,20 @@ export default function RegisterScreen() {
                   placeholder="Ingresa tu nombre completo"
                   placeholderTextColor={Colors.text.placeholder}
                   value={fullName}
-                  onChangeText={setFullName}
+                  onChangeText={(text) => {
+                    setFullName(text);
+                    setFullNameError('');
+                  }}
                   autoCapitalize="words"
                   autoComplete="name"
                   editable={!isLoading}
                 />
               </View>
+              {fullNameError ? <Text style={styles.errorText}>{fullNameError}</Text> : null}
 
               {/* Email */}
               <Text style={styles.label}>Email</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, emailError && styles.inputContainerError]}>
                 <Ionicons
                   name="mail-outline"
                   size={20}
@@ -165,20 +203,27 @@ export default function RegisterScreen() {
                   placeholder="Tu correo electrónico"
                   placeholderTextColor={Colors.text.placeholder}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setEmailError('');
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
                   editable={!isLoading}
                 />
               </View>
-              <Text style={styles.helperText}>
-                Te enviaremos un código de verificación a este correo.
-              </Text>
+              {emailError ? (
+                <Text style={styles.errorText}>{emailError}</Text>
+              ) : (
+                <Text style={styles.helperText}>
+                  Te enviaremos un código de verificación a este correo.
+                </Text>
+              )}
 
               {/* Contraseña */}
               <Text style={styles.label}>Contraseña</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, passwordError && styles.inputContainerError]}>
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
@@ -190,7 +235,10 @@ export default function RegisterScreen() {
                   placeholder="Crea una contraseña"
                   placeholderTextColor={Colors.text.placeholder}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    setPasswordError('');
+                  }}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
@@ -208,10 +256,11 @@ export default function RegisterScreen() {
                   />
                 </TouchableOpacity>
               </View>
+              {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
 
               {/* Confirmar Contraseña */}
               <Text style={styles.label}>Confirmar Contraseña</Text>
-              <View style={styles.inputContainer}>
+              <View style={[styles.inputContainer, confirmPasswordError && styles.inputContainerError]}>
                 <Ionicons
                   name="lock-closed-outline"
                   size={20}
@@ -223,7 +272,10 @@ export default function RegisterScreen() {
                   placeholder="Confirma tu contraseña"
                   placeholderTextColor={Colors.text.placeholder}
                   value={confirmPassword}
-                  onChangeText={setConfirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    setConfirmPasswordError('');
+                  }}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoComplete="password-new"
@@ -241,6 +293,7 @@ export default function RegisterScreen() {
                   />
                 </TouchableOpacity>
               </View>
+              {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
               {/* Términos y Condiciones */}
               <View style={styles.termsContainer}>
@@ -333,6 +386,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 4,
   },
+  inputContainerError: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+  },
   inputIcon: {
     marginRight: 12,
   },
@@ -345,6 +402,14 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 4,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 8,
+    marginTop: 4,
+    marginLeft: 4,
   },
   helperText: {
     fontSize: 12,

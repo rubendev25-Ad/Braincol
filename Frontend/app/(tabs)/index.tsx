@@ -24,7 +24,7 @@ export default function DashboardScreen() {
       const userDataStr = await AsyncStorage.getItem('userData');
       if (userDataStr) {
         const userData = JSON.parse(userDataStr);
-        const firstName = userData.fullName?.split(' ')[0] || 'Usuario';
+        const firstName = userData.nombre || userData.fullName?.split(' ')[0] || 'Usuario';
         setUserName(firstName);
       }
     } catch (error) {

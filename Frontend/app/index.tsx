@@ -1,21 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   Easing,
-  ActivityIndicator,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
 import { Colors } from '../constants/Colors';
 
 export default function SplashScreen() {
   const breatheAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [showSpinner, setShowSpinner] = useState(false);
 
   useEffect(() => {
     // Fade in inicial
@@ -44,27 +41,8 @@ export default function SplashScreen() {
     );
     breatheAnimation.start();
 
-    // Mostrar spinner después de 3 segundos
-    const spinnerTimer = setTimeout(() => {
-      setShowSpinner(true);
-    }, 3000);
-
-    // Simular carga y navegar al onboarding después de 4-5 segundos con fade out
-    const navigationTimer = setTimeout(() => {
-      // Fade out antes de navegar
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        router.replace('/onboarding');
-      });
-    }, 4500);
-
     return () => {
       breatheAnimation.stop();
-      clearTimeout(spinnerTimer);
-      clearTimeout(navigationTimer);
     };
   }, []);
 
@@ -92,14 +70,6 @@ export default function SplashScreen() {
         <Text style={styles.brandName}>Brainsure</Text>
         <Text style={styles.brandSubtitle}>Cuidadores</Text>
       </Animated.View>
-
-      {/* Spinner que aparece después de 3 segundos */}
-      {showSpinner && (
-        <View style={styles.spinnerContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Cargando...</Text>
-        </View>
-      )}
     </View>
   );
 }

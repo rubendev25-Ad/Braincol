@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const assessmentRoutes = require('./routes/assessmentRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,9 @@ app.use('/api/auth', authRoutes);
 
 // Rutas de evaluación
 app.use('/api/assessment', assessmentRoutes);
+
+// Rutas de usuario
+app.use('/api/user', userRoutes);
 
 // Manejo de errores 404
 app.use((req, res) => {

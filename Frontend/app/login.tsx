@@ -36,12 +36,33 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
-      return;
+    // Limpiar errores previos
+    setEmailError('');
+    setPasswordError('');
+
+    let hasError = false;
+
+    // Validar email
+    if (!email.trim()) {
+      setEmailError('El correo electrónico es obligatorio');
+      hasError = true;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailError('Por favor ingresa un correo electrónico válido');
+      hasError = true;
     }
+
+    // Validar contraseña
+    if (!password) {
+      setPasswordError('La contraseña es obligatoria');
+      hasError = true;
+    }
+
+    if (hasError) return;
 
     setLoading(true);
 
@@ -60,29 +81,26 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (!response.ok) {
+        setLoading(false);
+        
         // Si el usuario no está verificado
         if (data.needsVerification) {
-          Alert.alert(
-            'Verificación requerida',
-            data.message || 'Por favor verifica tu cuenta',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  router.push({
-                    pathname: '/verify',
-                    params: { email: email.trim().toLowerCase() }
-                  });
-                }
-              }
-            ]
-          );
-          setLoading(false);
+          setEmailError('Por favor verifica tu cuenta primero');
+          setTimeout(() => {
+            router.push({
+              pathname: '/verify',
+              params: { email: email.trim().toLowerCase() }
+            });
+          }, 1500);
           return;
         }
 
-        Alert.alert('Error', data.message || 'Credenciales incorrectas');
-        setLoading(false);
+        // Error de credenciales
+        if (response.status === 401) {
+          setPasswordError('Correo o contraseña incorrectos');
+        } else {
+          setEmailError(data.message || 'Error al iniciar sesión');
+        }
         return;
       }
 
@@ -94,8 +112,7 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Error en login:', error);
-      Alert.alert('Error', 'No se pudo conectar con el servidor');
-    } finally {
+      setEmailError('No se pudo conectar con el servidor');
       setLoading(false);
     }
   };
@@ -136,27 +153,51 @@ export default function LoginScreen() {
 
             {/* Form */}
             <View style={styles.form}>
-              <TextInput
-                style={styles.input}
-                placeholder="Correo electrónico"
-                placeholderTextColor={Colors.text.placeholder}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={[styles.input, emailError && styles.inputError]}
+                  placeholder="Correo electrónico"
+                  placeholderTextColor={Colors.text.placeholder}
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setEmailError('');
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                />
+                {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+              </View>
 
-              <TextInput
-                style={styles.input}
-                placeholder="Contraseña"
-                placeholderTextColor={Colors.text.placeholder}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="password"
-              />
+              <View style={styles.inputContainer}>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, passwordError && styles.inputError]}
+                    placeholder="Contraseña"
+                    placeholderTextColor={Colors.text.placeholder}
+                    value={password}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      setPasswordError('');
+                    }}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="password"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={22}
+                      color={Colors.text.placeholder}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+              </View>
 
               <TouchableOpacity
                 onPress={handleForgotPassword}
@@ -259,6 +300,12 @@ const styles = StyleSheet.create({
   form: {
     marginBottom: 32,
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
   input: {
     backgroundColor: Colors.white,
     borderRadius: 12,
@@ -267,9 +314,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: 'Poppins-Regular',
     color: Colors.text.primary,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    padding: 4,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontFamily: 'Poppins-Regular',
+    marginTop: 6,
+    marginLeft: 4,
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
